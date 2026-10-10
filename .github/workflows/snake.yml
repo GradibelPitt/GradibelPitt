@@ -50,12 +50,28 @@ jobs:
 
               left = min(x for x, _ in cells) - 2
               top = min(y for _, y in cells) - 2
+              right = max(x for x, _ in cells) - 2
+              bottom = max(y for _, y in cells) - 2
               width = max(x for x, _ in cells) - left + 14
               height = max(y for _, y in cells) - top + 14
               clip = (f'<defs><clipPath id="snake-grid-clip" clipPathUnits="userSpaceOnUse">'
                       f'<rect x="{left:g}" y="{top:g}" width="{width:g}" height="{height:g}"/>'
                       f'</clipPath></defs>')
               svg = svg[:snake.start()] + clip + '<g clip-path="url(#snake-grid-clip)">' + snake.group(1) + '</g>' + svg[snake.end(1):]
+
+              def keep_on_grid(match):
+                  return re.sub(
+                      r'translate\((-?[\d.]+)px,(-?[\d.]+)px\)',
+                      lambda point: f'translate({min(max(float(point[1]), left), right):g}px,'
+                                    f'{min(max(float(point[2]), top), bottom):g}px)',
+                      match.group(0),
+                  )
+
+              svg, frame_count = re.subn(
+                  r'@keyframes s\d+\{.*?\}(?=\.s\.s\d+\{)', keep_on_grid, svg, flags=re.DOTALL
+              )
+              if frame_count != len(re.findall(r'<rect class="s[^"]*"', snake.group(1))):
+                  raise ValueError(f"Unexpected snake animation structure: {path}")
               path.write_text(svg, encoding="utf-8")
           PY
 
